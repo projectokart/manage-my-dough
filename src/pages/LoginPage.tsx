@@ -16,8 +16,8 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>);
+
   }
 
   if (user && profile?.is_approved) {
@@ -36,14 +36,14 @@ export default function LoginPage() {
             Your account is awaiting admin approval. You'll be able to log in once approved.
           </p>
           <button
-            onClick={async () => { await signOut(); window.location.reload(); }}
-            className="text-sm text-primary font-bold"
-          >
+            onClick={async () => {await signOut();window.location.reload();}}
+            className="text-sm text-primary font-bold">
+
             Sign out
           </button>
         </div>
-      </div>
-    );
+      </div>);
+
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,7 +65,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen bg-background flex-col flex items-center justify-center">
       {/* Header */}
       <div className="bg-primary p-8 pb-16 rounded-b-4xl shadow-lg">
         <h1 className="text-2xl font-black italic tracking-tighter text-primary-foreground">
@@ -89,29 +89,29 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            {isSignUp && (
-              <div className="relative">
+            {isSignUp &&
+            <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
-                  type="text"
-                  placeholder="Full Name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  required
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary text-foreground text-sm font-bold border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
-                />
+                type="text"
+                placeholder="Full Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary text-foreground text-sm font-bold border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground" />
+
               </div>
-            )}
+            }
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="email"
                 placeholder="Email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary text-foreground text-sm font-bold border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
-              />
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary text-foreground text-sm font-bold border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground" />
+
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -119,24 +119,24 @@ export default function LoginPage() {
                 type="password"
                 placeholder="Password"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary text-foreground text-sm font-bold border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
-              />
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary text-foreground text-sm font-bold border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground" />
+
             </div>
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {submitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
+              className="w-full py-3.5 rounded-2xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+
+              {submitting ?
+              <Loader2 className="w-4 h-4 animate-spin" /> :
+
+              <>
                   {isSignUp ? "Sign Up" : "Sign In"}
                   <ArrowRight className="w-4 h-4" />
                 </>
-              )}
+              }
             </button>
           </form>
 
@@ -148,6 +148,6 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
