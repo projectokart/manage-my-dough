@@ -237,12 +237,25 @@ const uploadImage = async (cardId: string, subId: string) => {
   const handleSave = async () => {
   const allLogs: any[] = [];
   
-  // 1. Data Structure Prepare karein
+  // 1. KADAK VALIDATION: Check if any filled row is missing a category
+  // Hum har card ko check karenge jiske andar kuch bhi likha gaya hai
+  const hasInvalidCard = cards.some(card => {
+    const hasData = card.subRows.some(row => row.description.trim() !== "" || row.amount !== "");
+    // Agar data bhara hai par category select nahi ki (category === "")
+    return hasData && !card.category;
+  });
+
+  if (hasInvalidCard) {
+    toast.error("Bhai, Category select karna zaroori hai!"); // Alert user
+    return; // Yahin se wapas mud jao, aage mat badho
+  }
+
+  // 2. Data Prepare Karein
   for (const card of cards) {
-    if (!card.category) continue;
+    // Ab humein pata hai ki agar yahan tak pahunche hain toh category selected hai
+    if (!card.category) continue; 
     
     for (const row of card.subRows) {
-      // Sirf wahi rows uthao jinme description ya amount ho
       if (!row.description && !row.amount) continue;
 
       const amountValue = parseFloat(row.amount) || 0;
@@ -250,23 +263,23 @@ const uploadImage = async (cardId: string, subId: string) => {
       allLogs.push({
         user_id: userId,
         mission_id: missionId,
-        date: date, // Make sure 'date' state sahi format mein ho (YYYY-MM-DD)
+        date: date,
         category: card.category,
         description: row.description,
         amount: amountValue,
-        image_url: row.uploadedUrl || null, // Auto-uploaded URL yahan se jayega
+        image_url: row.uploadedUrl || null,
         status: "pending",
       });
     }
   }
 
-  // 2. Validation
+  // 3. Final Check: Empty Form
   if (allLogs.length === 0) {
-    toast.error("Add at least one expense entry!");
+    toast.error("Kam se kam ek entry toh bhariye!");
     return;
   }
 
-  // 3. Limit Checks - Block if any category exceeds limit
+  // 4. Limit Check (Existing logic)
   const exceededCategories: string[] = [];
   for (const log of allLogs) {
     const status = getCategoryLimitStatus(log.category);
@@ -276,32 +289,21 @@ const uploadImage = async (cardId: string, subId: string) => {
   }
 
   if (exceededCategories.length > 0) {
-    const uniqueCats = [...new Set(exceededCategories)];
-    toast.error(`Daily limit exceeded for: ${uniqueCats.join(", ").toUpperCase()}. Reduce amounts or contact admin.`);
+    toast.error(`Limit cross ho gayi hai: ${exceededCategories.join(", ")}`);
     return;
   }
 
-  // 4. Final Database Insert
+  // 5. Database Insert
   setSaving(true);
   try {
     const { error } = await supabase.from("expenses").insert(allLogs);
-    
     if (error) throw error;
 
-    toast.success("All expenses saved to cloud!");
-    
-    // UI Reset: Form ko wapas initial state mein lana
-    setCards([{ 
-      id: generateSafeId(), 
-      category: "", 
-      subRows: [createSubRow()] 
-    }]);
-    
-    if (onSaved) onSaved(); // Callback to refresh the parent list
-
+    toast.success("Shabash! Data save ho gaya.");
+    setCards([{ id: generateSafeId(), category: "", subRows: [createSubRow()] }]);
+    if (onSaved) onSaved();
   } catch (error: any) {
-    console.error("Save Error:", error);
-    toast.error("Save failed: " + error.message);
+    toast.error("Error: " + error.message);
   } finally {
     setSaving(false);
   }
@@ -494,8 +496,21 @@ const uploadImage = async (cardId: string, subId: string) => {
 
       <button
   onClick={handleSave}
-  disabled={saving}
-  className="w-full mt-6 bg-primary text-primary-foreground py-3.5 rounded-xl font-black uppercase text-[10px] tracking-[0.15em] shadow-lg shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+  // Logic: Agar saving ho rahi ho YA phir kisi card mein data ho par category missing ho, toh disable kar do
+  disabled={
+    saving || 
+    cards.some(card => 
+      card.subRows.some(row => row.description || row.amount) && !card.category
+    )
+  }
+  className={`w-full mt-6 py-3.5 rounded-xl font-black uppercase text-[10px] tracking-[0.15em] transition-all flex items-center justify-center gap-2 shadow-lg
+    ${
+      // Visual Feedback: Agar category missing hai toh rang badal do
+      cards.some(card => card.subRows.some(row => row.description || row.amount) && !card.category)
+        ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none" 
+        : "bg-primary text-primary-foreground shadow-primary/20 active:scale-[0.98] hover:opacity-90"
+    } 
+    disabled:opacity-50 disabled:pointer-events-none`}
 >
   {saving ? (
     <>
