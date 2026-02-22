@@ -496,35 +496,42 @@ const uploadImage = async (cardId: string, subId: string) => {
 
      <button
   onClick={handleSave}
-  // Logic: Category + Detail + Positive Amount (No zero, No negative)
   disabled={
     saving || 
     cards.some(card => {
-      // 1. Check: Category select honi chahiye
+      // 1. Check: Category missing check
       if (!card.category) return true;
       
-      // 2. Check: Har row mein detail aur POSITIVE amount hona chahiye
+      // 2. Check: Detail aur Positive Amount check
       const hasInvalidRow = card.subRows.some(row => {
         const amountNum = parseFloat(row.amount);
         return (
-          row.description.trim() === "" || // Detail khali na ho
-          !row.amount ||                   // Amount input khali na ho
-          amountNum <= 0                   // Amount 0 ya negative na ho
+          row.description.trim() === "" || 
+          !row.amount || 
+          amountNum <= 0
         );
       });
 
-      return hasInvalidRow;
+      // 3. Check: Live Limit Check (Existing + Current entries)
+      const status = getCategoryLimitStatus(card.category);
+      const isLimitExceeded = status?.exceeded || false;
+
+      return hasInvalidRow || isLimitExceeded;
     })
   }
   className={`w-full mt-6 py-3.5 rounded-xl font-black uppercase text-[10px] tracking-[0.15em] transition-all flex items-center justify-center gap-2 shadow-lg
     ${
-      cards.some(card => 
-        !card.category || 
-        card.subRows.some(row => {
-          const amountNum = parseFloat(row.amount);
-          return row.description.trim() === "" || !row.amount || amountNum <= 0;
-        })
-      )
+      cards.some(card => {
+        const status = card.category ? getCategoryLimitStatus(card.category) : null;
+        return (
+          !card.category || 
+          card.subRows.some(row => {
+            const amountNum = parseFloat(row.amount);
+            return row.description.trim() === "" || !row.amount || amountNum <= 0;
+          }) ||
+          status?.exceeded // Limit cross hone par bhi grey ho jayega
+        );
+      })
         ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none" 
         : "bg-primary text-primary-foreground shadow-primary/20 active:scale-[0.98] hover:opacity-90"
     } 
