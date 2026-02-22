@@ -810,6 +810,14 @@ const uniqueMissionsReport = useMemo(() => {
   {filteredExpenses.map((e) => {
     const userName = e.profiles?.name || e.user_name || "Unknown User";
     const receiptImage = e.image_url;
+    // Category mapping for colors
+    const catColors: any = {
+      travel: "bg-blue-50 text-blue-600 border-blue-100",
+      meal: "bg-orange-50 text-orange-600 border-orange-100",
+      hotel: "bg-purple-50 text-purple-600 border-purple-100",
+      luggage: "bg-cyan-50 text-cyan-600 border-cyan-100",
+      other: "bg-slate-50 text-slate-600 border-slate-100"
+    };
 
     return (
       <div 
@@ -819,23 +827,32 @@ const uniqueMissionsReport = useMemo(() => {
         {/* Header: User Info & Amount */}
         <div className="flex justify-between items-start mb-2">
           <div className="flex gap-2.5">
-            {/* User Initial Circle - Slightly Smaller */}
+            {/* User Initial Circle */}
             <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center font-black text-slate-400 text-[10px] border border-slate-100 flex-shrink-0">
               {userName.charAt(0)}
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
                 <p className="text-[8px] font-black text-primary uppercase tracking-wider">
                   {userName}
                 </p>
-                <span className="text-[7px] font-bold text-gray-300">• {new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })}</span>
+                
+                {/* --- CATEGORY BADGE --- */}
+                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md border uppercase tracking-tighter ${catColors[e.category] || catColors.other}`}>
+                  {e.category || 'Other'}
+                </span>
+
+                <span className="text-[7px] font-bold text-gray-300">
+                  • {new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
               </div>
+              
               <h4 className="text-[11px] font-bold text-gray-800 line-clamp-1 leading-tight">
                 {e.description || "No Description"}
               </h4>
 
-              {/* 📸 IMAGE SECTION: Compact Preview */}
+              {/* 📸 IMAGE SECTION */}
               {receiptImage ? (
                 <div
                   onClick={() => setSelectedPreviewImage(receiptImage)}
@@ -874,8 +891,9 @@ const uniqueMissionsReport = useMemo(() => {
           </div>
         </div>
 
-        {/* Actions Area - Slimmer & Tight */}
+        {/* Actions Area */}
         <div className="flex gap-2 border-t border-slate-50 pt-3 mt-1.5">
+          {/* ... aapka purana action button logic ... */}
           {e.status === "pending" ? (
             <>
               <button
