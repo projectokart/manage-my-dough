@@ -494,19 +494,37 @@ const uploadImage = async (cardId: string, subId: string) => {
         + Add Expense Category
       </button>
 
-      <button
+     <button
   onClick={handleSave}
-  // Logic: Agar saving ho rahi ho YA phir kisi card mein data ho par category missing ho, toh disable kar do
+  // Logic: Category + Detail + Positive Amount (No zero, No negative)
   disabled={
     saving || 
-    cards.some(card => 
-      card.subRows.some(row => row.description || row.amount) && !card.category
-    )
+    cards.some(card => {
+      // 1. Check: Category select honi chahiye
+      if (!card.category) return true;
+      
+      // 2. Check: Har row mein detail aur POSITIVE amount hona chahiye
+      const hasInvalidRow = card.subRows.some(row => {
+        const amountNum = parseFloat(row.amount);
+        return (
+          row.description.trim() === "" || // Detail khali na ho
+          !row.amount ||                   // Amount input khali na ho
+          amountNum <= 0                   // Amount 0 ya negative na ho
+        );
+      });
+
+      return hasInvalidRow;
+    })
   }
   className={`w-full mt-6 py-3.5 rounded-xl font-black uppercase text-[10px] tracking-[0.15em] transition-all flex items-center justify-center gap-2 shadow-lg
     ${
-      // Visual Feedback: Agar category missing hai toh rang badal do
-      cards.some(card => card.subRows.some(row => row.description || row.amount) && !card.category)
+      cards.some(card => 
+        !card.category || 
+        card.subRows.some(row => {
+          const amountNum = parseFloat(row.amount);
+          return row.description.trim() === "" || !row.amount || amountNum <= 0;
+        })
+      )
         ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none" 
         : "bg-primary text-primary-foreground shadow-primary/20 active:scale-[0.98] hover:opacity-90"
     } 
