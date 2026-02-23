@@ -3,10 +3,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
 import { Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function LoginPage() {
   const { user, profile, loading, signIn, signUp, signOut } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -50,7 +52,14 @@ export default function LoginPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      if (isSignUp) {
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("Password reset link sent! Check your email.");
+        setIsForgotPassword(false);
+      } else if (isSignUp) {
         const { error } = await signUp(email, password, name);
         if (error) throw error;
         toast.success("Account created! Awaiting admin approval.");
@@ -96,15 +105,15 @@ export default function LoginPage() {
         <div className="glass-card rounded-3xl p-6 space-y-5 bg-white shadow-xl border border-white/20">
           <div className="text-center">
             <h2 className="text-lg font-black text-foreground">
-              {isSignUp ? "Create Account" : "Welcome Back"}
+              {isForgotPassword ? "Reset Password" : isSignUp ? "Create Account" : "Welcome Back"}
             </h2>
             <p className="text-xs text-muted-foreground mt-1">
-              {isSignUp ? "Sign up to start tracking expenses" : "Sign in to continue"}
+              {isForgotPassword ? "Enter your email to receive a reset link" : isSignUp ? "Sign up to start tracking expenses" : "Sign in to continue"}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            {isSignUp && (
+             {isSignUp && !isForgotPassword && (
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
@@ -130,17 +139,19 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary text-foreground text-sm font-bold border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground" 
-              />
-            </div>
+            {!isForgotPassword && (
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary text-foreground text-sm font-bold border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground" 
+                />
+              </div>
+            )}
 
             <button
               type="submit"
@@ -151,19 +162,36 @@ export default function LoginPage() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  {isSignUp ? "Sign Up" : "Sign In"}
+                  {isForgotPassword ? "Send Reset Link" : isSignUp ? "Sign Up" : "Sign In"}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-            <button onClick={() => setIsSignUp(!isSignUp)} className="text-primary font-bold">
-              {isSignUp ? "Sign In" : "Sign Up"}
-            </button>
-          </p>
+          {isForgotPassword ? (
+            <p className="text-center text-xs text-muted-foreground">
+              <button onClick={() => setIsForgotPassword(false)} className="text-primary font-bold">
+                Back to Sign In
+              </button>
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {!isSignUp && (
+                <p className="text-center">
+                  <button onClick={() => setIsForgotPassword(true)} className="text-xs text-muted-foreground hover:text-primary font-bold transition-colors">
+                    Forgot Password?
+                  </button>
+                </p>
+              )}
+              <p className="text-center text-xs text-muted-foreground">
+                {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+                <button onClick={() => setIsSignUp(!isSignUp)} className="text-primary font-bold">
+                  {isSignUp ? "Sign In" : "Sign Up"}
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

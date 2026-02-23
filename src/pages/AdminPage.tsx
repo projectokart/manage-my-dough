@@ -444,7 +444,8 @@ const exportCSV = () => {
     "Category": e.category.toUpperCase(),
     "Description": e.description || "",
     "Amount (₹)": Number(e.amount),
-    "Status": e.status.toUpperCase()
+    "Status": e.status.toUpperCase(),
+    "Receipt Image": e.image_url || ""
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(excelRows);
@@ -1557,32 +1558,43 @@ const uniqueMissionsReport = useMemo(() => {
       <table className="w-full text-left">
          <tbody className="divide-y divide-gray-50">
             {/* ✅ Hum ab seedha 'filtered' variable use karenge jo humne useMemo mein banaya hai */}
-            {filtered.slice(0, 20).map((e, i) => (
-               <tr key={i} className="hover:bg-gray-50 transition-colors">
-                  <td className="p-4">
-                     {/* ✅ Profile Name correctly displayed */}
-                     <p className="text-[10px] font-black text-gray-800 uppercase">
-                        {e.profiles?.name || "Unknown"}
-                     </p>
-                     {/* ✅ Fix: Changed e.mission_name to e.missions?.name */}
-                     <p className="text-[7px] text-gray-400 font-bold uppercase truncate max-w-[150px]">
-                        {e.missions?.name || 'General'}
-                     </p>
-                  </td>
-                  <td className="p-4 text-right">
-                     <p className="text-[10px] font-black text-emerald-600 italic">
-                        ₹{Number(e.amount).toLocaleString()}
-                     </p>
-                     <p className="text-[7px] font-black uppercase opacity-30">
-                        {e.category} • {e.status}
-                     </p>
-                  </td>
-               </tr>
-            ))}
+             {filtered.slice(0, 20).map((e, i) => (
+                <tr key={i} className="hover:bg-gray-50 transition-colors">
+                   <td className="p-3 w-10">
+                      {e.image_url ? (
+                        <div
+                          onClick={() => setSelectedPreviewImage(e.image_url)}
+                          className="w-9 h-9 rounded-xl border border-gray-100 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/10 transition-all group relative bg-gray-50 flex-shrink-0"
+                        >
+                          <img src={e.image_url} className="w-full h-full object-cover" alt="Receipt" />
+                        </div>
+                      ) : (
+                        <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center border border-dashed border-gray-200">
+                          <ImageIcon className="w-3 h-3 text-gray-300" />
+                        </div>
+                      )}
+                   </td>
+                   <td className="p-3">
+                      <p className="text-[10px] font-black text-gray-800 uppercase">
+                         {e.profiles?.name || "Unknown"}
+                      </p>
+                      <p className="text-[7px] text-gray-400 font-bold uppercase truncate max-w-[150px]">
+                         {e.missions?.name || 'General'}
+                      </p>
+                   </td>
+                   <td className="p-3 text-right">
+                      <p className="text-[10px] font-black text-emerald-600 italic">
+                         ₹{Number(e.amount).toLocaleString()}
+                      </p>
+                      <p className="text-[7px] font-black uppercase opacity-30">
+                         {e.category} • {e.status}
+                      </p>
+                   </td>
+                </tr>
+             ))}
          </tbody>
       </table>
       
-      {/* ✅ Check against filtered.length instead of raw expenses */}
       {filtered.length === 0 && (
          <div className="p-10 text-center opacity-20 font-black uppercase text-xs">
             No Records Found
@@ -1590,6 +1602,11 @@ const uniqueMissionsReport = useMemo(() => {
       )}
    </div>
 </div>
+
+    <ImagePreviewModal 
+      imageUrl={selectedPreviewImage} 
+      onClose={() => setSelectedPreviewImage(null)} 
+    />
   </div>
 )}
       </div>
