@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import * as XLSX from 'xlsx';
 import ImagePreviewModal from "@/components/expense/ImagePreviewModal";
+import AdminJournalLogbook from "@/components/admin/AdminJournalLogbook";
 import { 
   // 🧭 Navigation & Action Icons
   User, 
@@ -50,7 +51,7 @@ RefreshCw
 } from 'lucide-react';
 
 // 1. Added "settlements" to Tab type
-type Tab = "expenses" | "users" | "limits" | "reports" | "settlements";
+type Tab = "expenses" | "users" | "limits" | "reports" | "settlements" | "journal";
 
 
 
@@ -176,50 +177,66 @@ const loadData = async () => {
   // --- Logic Functions ---
   
 
-// 1. Master Logic: Approve (with Edit & Note)
+// 1. Master Logic: Approve (with Edit & Note) - with input validation
 const approveExpense = async (expenseId: string) => {
   const expense = expenses.find(e => e.id === expenseId);
   if (!expense) return;
 
-  // Amount Edit & Admin Note via prompts
   const newAmount = prompt(`Current: ₹${expense.amount}. Edit amount?`, expense.amount.toString());
   if (newAmount === null) return;
+  
+  const parsedAmount = parseFloat(newAmount);
+  if (isNaN(parsedAmount) || parsedAmount < 0 || parsedAmount > 10000000) {
+    toast.error("Invalid amount. Must be between 0 and 1,00,00,000.");
+    return;
+  }
 
   const adminNote = prompt("Add a note for the user:", "Approved by admin.");
+  if (adminNote && adminNote.length > 500) {
+    toast.error("Note too long (max 500 characters).");
+    return;
+  }
 
   try {
     const { error } = await supabase.from("expenses").update({
       status: "approved",
-      amount: parseFloat(newAmount),
-      admin_note: adminNote,
+      amount: parsedAmount,
+      admin_note: adminNote?.trim() || null,
       approved_by: user?.id,
       approved_at: new Date().toISOString(),
     }).eq("id", expenseId);
 
     if (error) throw error;
-
     toast.success("Expense Approved!");
-    loadData(); // Sync with DB
+    loadData();
   } catch (err: any) {
     toast.error(err.message);
   }
 };
 
-// 2. Master Logic: Reject (with Reason)
+// 2. Master Logic: Reject (with Reason) - with input validation
 const rejectExpense = async (expenseId: string) => {
   const reason = prompt("Rejection reason:");
-  if (reason === null) return; // User cancelled
+  if (reason === null) return;
+  
+  if (reason.trim().length === 0) {
+    toast.error("Please enter a rejection reason.");
+    return;
+  }
+  if (reason.length > 500) {
+    toast.error("Reason too long (max 500 characters).");
+    return;
+  }
 
   try {
     const { error } = await supabase.from("expenses").update({
       status: "rejected",
-      admin_note: reason, 
+      admin_note: reason.trim(),
       approved_by: user?.id,
       approved_at: new Date().toISOString(),
     }).eq("id", expenseId);
 
     if (error) throw error;
-
     toast.success("Expense rejected");
     loadData();
   } catch (err: any) {
@@ -467,7 +484,8 @@ const exportCSV = () => {
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "expenses", label: "Expenses", icon: <DollarSign className="w-4 h-4" /> },
     { key: "users", label: "Users", icon: <Users className="w-4 h-4" /> },
-    { key: "settlements", label: "Settlements", icon: <Wallet className="w-4 h-4" /> },
+    { key: "settlements", label: "Settle", icon: <Wallet className="w-4 h-4" /> },
+    { key: "journal", label: "Journal", icon: <Activity className="w-4 h-4" /> },
     { key: "limits", label: "Limits", icon: <Settings className="w-4 h-4" /> },
     { key: "reports", label: "Reports", icon: <BarChart3 className="w-4 h-4" /> },
   ];
@@ -1615,6 +1633,8 @@ const uniqueMissionsReport = useMemo(() => {
     />
   </div>
 )}
+        {/* Journal Tab */}
+        {tab === "journal" && <AdminJournalLogbook />}
       </div>
     </div>
   );

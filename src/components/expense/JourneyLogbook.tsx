@@ -3,10 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { 
   Camera, Eye, Save, X, Loader2, 
-  ChevronDown, Lock as LockKeyhole, ChevronRight // 'Lock as LockIcon' add kiya
+  ChevronDown, Lock as LockKeyhole, ChevronRight, MapPin, Users as UsersIcon, FileText
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ImagePreviewModal from "./ImagePreviewModal";
+import MissionGallery from "./MissionGallery";
 
 const CATEGORY_DOT_COLORS: Record<string, string> = {
   travel: "bg-category-travel",
@@ -417,6 +418,16 @@ export default function JourneyLogbook({ userId, refreshKey }: Props) {
           <div className="flex justify-between items-center">
             <div>
               <h4 className="text-xs font-black text-foreground uppercase tracking-tight">{mission.name}</h4>
+              {(mission as any).address && (
+                <p className="text-[8px] text-muted-foreground/60 font-bold flex items-center gap-0.5 mt-0.5">
+                  <MapPin className="w-2.5 h-2.5" /> {(mission as any).address}
+                </p>
+              )}
+              {(mission as any).mission_with && (
+                <p className="text-[8px] text-muted-foreground/60 font-bold flex items-center gap-0.5">
+                  <UsersIcon className="w-2.5 h-2.5" /> {(mission as any).mission_with}
+                </p>
+              )}
               <p className="text-[9px] text-muted-foreground font-bold mt-0.5">
                 {new Date(mission.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}{mission.end_date ? ` → ${new Date(mission.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}` : " → Ongoing"}
               </p>
@@ -426,10 +437,21 @@ export default function JourneyLogbook({ userId, refreshKey }: Props) {
               {cashTotal > 0 && <p className="text-[9px] font-bold text-success">+₹{cashTotal.toLocaleString()} cash</p>}
             </div>
           </div>
+          {(mission as any).details && (
+            <div className="flex items-start gap-2 bg-secondary/30 p-2.5 rounded-xl border border-border/50 mt-2">
+              <FileText className="w-3 h-3 text-muted-foreground/50 mt-0.5 flex-shrink-0" />
+              <p className="text-[8px] text-muted-foreground font-medium leading-relaxed">{(mission as any).details}</p>
+            </div>
+          )}
           <div className="flex gap-1.5 mt-2">
             <span className="text-[8px] bg-secondary px-2 py-0.5 rounded-full font-black text-muted-foreground">{missionExpenses.length} entries</span>
             <span className="text-[8px] px-2 py-0.5 rounded-full font-black uppercase bg-success/15 text-success">{mission.status}</span>
           </div>
+        </div>
+
+        {/* Mission Gallery */}
+        <div className="px-4 pt-2">
+          <MissionGallery missionId={mission.id} userId={userId} isActive={mission.status === "active"} />
         </div>
 
         <div className="divide-y divide-border">
@@ -490,6 +512,16 @@ export default function JourneyLogbook({ userId, refreshKey }: Props) {
               )}
               <div>
                 <h4 className="text-xs font-black text-foreground uppercase tracking-tight">{mission.name}</h4>
+                {(mission as any).address && (
+                  <p className="text-[8px] text-muted-foreground/60 font-bold flex items-center gap-0.5 mt-0.5">
+                    <MapPin className="w-2.5 h-2.5" /> {(mission as any).address}
+                  </p>
+                )}
+                {(mission as any).mission_with && (
+                  <p className="text-[8px] text-muted-foreground/60 font-bold flex items-center gap-0.5">
+                    <UsersIcon className="w-2.5 h-2.5" /> {(mission as any).mission_with}
+                  </p>
+                )}
                 <p className="text-[9px] text-muted-foreground font-bold mt-0.5">
                   {new Date(mission.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}{mission.end_date ? ` → ${new Date(mission.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}` : ""}
                 </p>
@@ -505,7 +537,21 @@ export default function JourneyLogbook({ userId, refreshKey }: Props) {
 
         {/* Level 2: Date list (shown when mission expanded) */}
         {isMissionOpen && (
-          <div className="divide-y divide-border">
+          <div>
+            {/* Mission Details & Gallery */}
+            {(mission as any).details && (
+              <div className="px-4 pt-3 pb-1">
+                <div className="flex items-start gap-2 bg-secondary/30 p-2.5 rounded-xl border border-border/50">
+                  <FileText className="w-3 h-3 text-muted-foreground/50 mt-0.5 flex-shrink-0" />
+                  <p className="text-[8px] text-muted-foreground font-medium leading-relaxed">{(mission as any).details}</p>
+                </div>
+              </div>
+            )}
+            <div className="px-4 pb-2">
+              <MissionGallery missionId={mission.id} userId={userId} isActive={false} />
+            </div>
+
+            <div className="divide-y divide-border">
             {dateGroups.length === 0 && (
               <p className="text-center text-muted-foreground text-[10px] italic py-6">No entries in this mission</p>
             )}
@@ -549,6 +595,7 @@ export default function JourneyLogbook({ userId, refreshKey }: Props) {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </div>
