@@ -120,14 +120,48 @@ export type Database = {
           },
         ]
       }
+      mission_photos: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          mission_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          mission_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          mission_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_photos_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       missions: {
         Row: {
+          address: string | null
           approved_at: string | null
           approved_by: string | null
           created_at: string
           details: string | null
           end_date: string | null
           id: string
+          mission_with: string | null
           name: string
           start_date: string
           status: string
@@ -135,12 +169,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
           details?: string | null
           end_date?: string | null
           id?: string
+          mission_with?: string | null
           name: string
           start_date?: string
           status?: string
@@ -148,12 +184,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
           details?: string | null
           end_date?: string | null
           id?: string
+          mission_with?: string | null
           name?: string
           start_date?: string
           status?: string
