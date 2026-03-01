@@ -33,7 +33,7 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute({ children, requireAdmin }: { children: React.ReactNode; requireAdmin?: boolean }) {
-  const { user, profile, role, loading } = useAuth();
+  const { user, role, loading } = useAuth();
 
   useEffect(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
@@ -53,7 +53,6 @@ function ProtectedRoute({ children, requireAdmin }: { children: React.ReactNode;
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (profile && !profile.is_approved) return <Navigate to="/login" replace />;
   if (requireAdmin && role !== "admin") return <Navigate to="/" replace />;
 
   return <>{children}</>;
