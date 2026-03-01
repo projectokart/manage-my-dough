@@ -120,8 +120,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    const isNetworkError = (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error ?? "");
+      const normalized = message.toLowerCase();
+      return normalized.includes("failed to fetch") || normalized.includes("network") || normalized.includes("fetch");
+    };
+
+    const sdkAttempt = async () => {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error };
+    };
+
+    try {
+      const firstAttempt = await sdkAttempt();
+      if (!firstAttempt.error) return firstAttempt;
+
+      if (!isNetworkError(firstAttempt.error)) {
+        return firstAttempt;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 450));
+
+      const secondAttempt = await sdkAttempt();
+      if (!secondAttempt.error || !isNetworkError(secondAttempt.error)) {
+        return secondAttempt;
+      }
+    } catch (sdkError) {
+      if (!isNetworkError(sdkError)) {
+        return { error: sdkError };
+      }
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json;charset=UTF-8",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        return {
+          error: new Error(
+            payload?.msg || payload?.error_description || payload?.error || "Authentication failed"
+          ),
+        };
+      }
+
+      if (!payload?.access_token || !payload?.refresh_token) {
+        return { error: new Error("Authentication succeeded but session data is incomplete") };
+      }
+
+      const { error: setSessionError } = await supabase.auth.setSession({
+        access_token: payload.access_token,
+        refresh_token: payload.refresh_token,
+      });
+
+      return { error: setSessionError };
+    } catch (fallbackError) {
+      return {
+        error:
+          fallbackError instanceof Error
+            ? fallbackError
+            : new Error("Authentication request failed before reaching backend"),
+      };
+    }
   };
 
   const signOut = async () => {

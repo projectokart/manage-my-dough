@@ -49,7 +49,7 @@ export default function LoginPage() {
     } catch (err: any) {
       const message = typeof err?.message === "string" ? err.message : "Authentication failed";
       if (message.toLowerCase().includes("failed to fetch")) {
-        toast.error("Network issue while signing in. Please check internet/VPN and try again.");
+        toast.error("Auth request blocked in this preview. Try the published URL or disable browser shield/VPN for this site.");
       } else {
         toast.error(message);
       }
