@@ -5,7 +5,7 @@ import type { User, Session } from "@supabase/supabase-js";
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  profile: { name: string; email: string; is_approved: boolean } | null;
+  profile: { name: string; email: string | null; is_approved: boolean } | null;
   role: "admin" | "user" | null;
   loading: boolean;
   signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
@@ -25,17 +25,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = async (userId: string) => {
     try {
       const [{ data: profileData, error: profileError }, { data: roleData, error: roleError }] = await Promise.all([
-        supabase.from("profiles").select("name, email, is_approved").eq("id", userId).single(),
-        supabase.from("user_roles").select("role").eq("user_id", userId).single(),
+        supabase.from("profiles").select("name, email, is_approved").eq("id", userId).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
       ]);
 
-      if (profileError) throw profileError;
-      if (roleError) throw roleError;
+      if (profileError) {
+        console.warn("Profile fetch warning:", profileError.message);
+        setProfile(null);
+      } else {
+        setProfile(profileData ?? null);
+      }
 
-      setProfile(profileData);
-      setRole((roleData?.role as "admin" | "user") || "user");
+      if (roleError) {
+        console.warn("Role fetch warning:", roleError.message);
+        setRole("user");
+      } else {
+        setRole((roleData?.role as "admin" | "user") || "user");
+      }
     } catch (error) {
-      console.error("Failed to fetch profile:", error);
+      console.error("Failed to hydrate user metadata:", error);
       setProfile(null);
       setRole("user");
     }
@@ -48,30 +56,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isMounted) setLoading(value);
     };
 
+    const safeHydrateUserMeta = (userId: string) => {
+      setTimeout(() => {
+        if (!isMounted) return;
+        void fetchProfile(userId);
+      }, 0);
+    };
+
     const timeoutId = window.setTimeout(() => {
       safeSetLoading(false);
     }, 8000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      try {
-        if (!isMounted) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!isMounted) return;
 
-        setSession(nextSession);
-        setUser(nextSession?.user ?? null);
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
 
-        if (nextSession?.user) {
-          setTimeout(() => {
-            fetchProfile(nextSession.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRole(null);
-        }
-      } catch (error) {
-        console.error("Auth state change error:", error);
-      } finally {
-        safeSetLoading(false);
+      if (nextSession?.user) {
+        safeHydrateUserMeta(nextSession.user.id);
+      } else {
+        setProfile(null);
+        setRole(null);
       }
+
+      safeSetLoading(false);
     });
 
     (async () => {
@@ -84,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
-          await fetchProfile(currentSession.user.id);
+          safeHydrateUserMeta(currentSession.user.id);
         }
       } catch (error) {
         console.error("Initial session load error:", error);

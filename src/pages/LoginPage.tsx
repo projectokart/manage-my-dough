@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function LoginPage() {
-  const { user, profile, loading, signIn, signUp, signOut } = useAuth();
+  const { user, loading, signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -22,30 +22,8 @@ export default function LoginPage() {
 
   }
 
-  if (user && profile?.is_approved) {
+  if (user) {
     return <Navigate to="/" replace />;
-  }
-
-  if (user && profile && !profile.is_approved) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="w-full max-w-sm text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-warning/20 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-warning" />
-          </div>
-          <h2 className="text-xl font-black text-foreground">Account Pending</h2>
-          <p className="text-sm text-muted-foreground">
-            Your account is awaiting admin approval. You'll be able to log in once approved.
-          </p>
-          <button
-            onClick={async () => {await signOut();window.location.reload();}}
-            className="text-sm text-primary font-bold">
-
-            Sign out
-          </button>
-        </div>
-      </div>);
-
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
