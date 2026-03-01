@@ -47,12 +47,7 @@ export default function LoginPage() {
         if (error) throw error;
       }
     } catch (err: any) {
-      const message = typeof err?.message === "string" ? err.message : "Authentication failed";
-      if (message.toLowerCase().includes("failed to fetch")) {
-        toast.error("Auth request blocked in this preview. Try the published URL or disable browser shield/VPN for this site.");
-      } else {
-        toast.error(message);
-      }
+      toast.error(typeof err?.message === "string" ? err.message : "Authentication failed");
     } finally {
       setSubmitting(false);
     }
