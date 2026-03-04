@@ -1,16 +1,18 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, User } from "lucide-react";
 import { toast } from "sonner";
 
 export default function LoginPage() {
-  const { user, loading, role, signIn } = useAuth();
+  const { user, loading, role, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   // Redirect based on role after login
   useEffect(() => {
@@ -46,13 +48,24 @@ export default function LoginPage() {
       toast.error("Email aur password dono daalo");
       return;
     }
+    if (isSignUp && !name.trim()) {
+      toast.error("Apna naam daalo");
+      return;
+    }
     setSubmitting(true);
     try {
-      const { error } = await signIn(email.trim(), password);
-      if (error) throw error;
-      toast.success("Login successful!");
+      if (isSignUp) {
+        const { error } = await signUp(email.trim(), password, name.trim());
+        if (error) throw error;
+        toast.success("Sign up successful! Please check your email to verify your account.");
+        setIsSignUp(false);
+      } else {
+        const { error } = await signIn(email.trim(), password);
+        if (error) throw error;
+        toast.success("Login successful!");
+      }
     } catch (err: any) {
-      toast.error(err?.message || "Login failed - check credentials");
+      toast.error(err?.message || (isSignUp ? "Sign up failed" : "Login failed - check credentials"));
     } finally {
       setSubmitting(false);
     }
@@ -67,13 +80,28 @@ export default function LoginPage() {
             EXPENSE TRACKER
           </h1>
           <p className="text-xs text-primary-foreground/70 mt-1 uppercase tracking-widest font-bold">
-            Sign in to continue
+            {isSignUp ? "Create your account" : "Sign in to continue"}
           </p>
         </div>
 
         {/* Form */}
         <div className="bg-card border border-border rounded-b-3xl -mt-6 pt-10 pb-8 px-6 shadow-lg">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  autoComplete="name"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-secondary text-foreground text-sm font-medium border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
+                />
+              </div>
+            )}
+
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
@@ -95,7 +123,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete="current-password"
+                autoComplete={isSignUp ? "new-password" : "current-password"}
                 className="w-full pl-10 pr-10 py-3 rounded-xl bg-secondary text-foreground text-sm font-medium border border-border outline-none focus:ring-2 focus:ring-primary/30 transition-all placeholder:text-muted-foreground"
               />
               <button
@@ -115,10 +143,21 @@ export default function LoginPage() {
               {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <>Sign In <ArrowRight className="w-4 h-4" /></>
+                <>{isSignUp ? "Sign Up" : "Sign In"} <ArrowRight className="w-4 h-4" /></>
               )}
             </button>
           </form>
+
+          <p className="text-center text-sm text-muted-foreground mt-5">
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-primary font-semibold hover:underline"
+            >
+              {isSignUp ? "Sign In" : "Sign Up"}
+            </button>
+          </p>
         </div>
       </div>
     </div>
