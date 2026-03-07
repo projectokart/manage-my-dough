@@ -40,10 +40,12 @@ interface Expense {
   category: string;
   description: string;
   amount: number;
+  number_of_people: number;
   image_url: string | null;
   status: string;
   approved_by: string | null;
   rejected_reason: string | null;
+  admin_note: string | null;
 }
 
 interface Props {
