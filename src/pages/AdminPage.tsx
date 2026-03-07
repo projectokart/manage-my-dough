@@ -314,12 +314,23 @@ const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 const deleteExpense = async (id: string) => {
   setIsActionLoading(id);
   try {
+    const expenseToDelete = expenses.find(e => e.id === id);
     const { error } = await supabase
       .from("expenses")
       .delete()
       .eq("id", id);
 
     if (error) throw error;
+    
+    if (expenseToDelete) {
+      await createNotification(
+        expenseToDelete.user_id,
+        "expense_deleted",
+        "Expense Deleted",
+        `₹${expenseToDelete.amount} (${expenseToDelete.category}) entry was deleted by admin.`,
+        id
+      );
+    }
     
     // Remove from local state instantly
     setExpenses(prev => prev.filter(e => e.id !== id));
