@@ -21,6 +21,7 @@ export default function UserDashboard() {
   const [categoryLimits, setCategoryLimits] = useState<Record<string, number>>({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [showSettlementModal, setShowSettlementModal] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const refresh = () => setRefreshKey(k => k + 1);
 
