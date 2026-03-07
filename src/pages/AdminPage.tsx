@@ -279,6 +279,16 @@ const rejectExpense = async (expenseId: string) => {
 
     if (error) throw error;
     toast.success("Expense rejected");
+    const expense = expenses.find(e => e.id === expenseId);
+    if (expense) {
+      await createNotification(
+        expense.user_id,
+        "expense_rejected",
+        "Expense Rejected",
+        `₹${expense.amount} (${expense.category}) rejected. Reason: ${reason.trim()}`,
+        expenseId
+      );
+    }
     loadData();
   } catch (err: any) {
     toast.error(err.message);
