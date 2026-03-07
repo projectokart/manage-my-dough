@@ -11,6 +11,7 @@ import LoginPage from "./pages/LoginPage";
 import Index from "./pages/Index";
 
 const AdminPage = React.lazy(() => import("./pages/AdminPage"));
+const NotificationsPage = React.lazy(() => import("./pages/NotificationsPage"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
@@ -41,6 +42,7 @@ const App = () => (
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>

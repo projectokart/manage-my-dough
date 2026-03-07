@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Settings, History, X, Image as ImageIcon, Maximize2 } from "lucide-react";
+import { LogOut, Settings, History, X, Image as ImageIcon, Maximize2, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ImagePreviewModal from "@/components/expense/ImagePreviewModal";
 // Components
@@ -21,6 +21,7 @@ export default function UserDashboard() {
   const [categoryLimits, setCategoryLimits] = useState<Record<string, number>>({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [showSettlementModal, setShowSettlementModal] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const refresh = () => setRefreshKey(k => k + 1);
 
@@ -29,7 +30,7 @@ export default function UserDashboard() {
 
     const fetchAll = async () => {
       try {
-        const [missionRes, expenseRes, settlementRes, limitsRes] = await Promise.all([
+        const [missionRes, expenseRes, settlementRes, limitsRes, notifRes] = await Promise.all([
           supabase.from("missions").select("*").eq("user_id", user.id)
             .in("status", ["active", "pending"]).order("created_at", { ascending: false }).limit(1),
           supabase.from("expenses").select("*").eq("user_id", user.id)
@@ -37,6 +38,7 @@ export default function UserDashboard() {
           supabase.from("settlements" as any).select(`*, admin:profiles!settlements_settled_by_fkey (name)`)
             .eq("user_id", user.id).order("created_at", { ascending: false }),
           supabase.from("category_limits").select("category, daily_limit"),
+          supabase.from("notifications" as any).select("id", { count: "exact" }).eq("user_id", user.id).eq("is_read", false),
         ]);
 
         setActiveMission(missionRes.data?.[0] ?? null);
@@ -46,6 +48,7 @@ export default function UserDashboard() {
         const limits: Record<string, number> = {};
         limitsRes.data?.forEach(l => { limits[l.category] = Number(l.daily_limit); });
         setCategoryLimits(limits);
+        setUnreadCount((notifRes as any).count || 0);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       }
@@ -87,6 +90,14 @@ export default function UserDashboard() {
             </div>
           </div>
           <div className="flex gap-2">
+            <button onClick={() => navigate("/notifications")} className="relative bg-primary-foreground/10 p-2 rounded-xl text-primary-foreground border border-white/10 active:scale-90 transition-all">
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white text-[8px] font-black rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
             {role === "admin" && (
               <button onClick={() => navigate("/admin")} className="bg-primary-foreground/10 p-2 rounded-xl text-primary-foreground border border-white/10 active:scale-90 transition-all">
                 <Settings className="w-4 h-4" />

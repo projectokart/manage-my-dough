@@ -1,13 +1,14 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, X, Camera, Eye, CloudUpload, Loader2,Check,Send } from "lucide-react";
+import { Plus, X, Camera, Eye, CloudUpload, Loader2, Check, Send, Users } from "lucide-react";
 import ImagePreviewModal from "./ImagePreviewModal";
 
 interface SubRow {
   id: string;
   description: string;
   amount: string;
+  peopleCount: number;
   imageFile: File | null;
   imagePreview: string | null;
   uploadedUrl: string | null;
@@ -41,7 +42,7 @@ function generateSafeId() {
 }
 
 function createSubRow(): SubRow {
-  return { id: generateSafeId(), description: "", amount: "", imageFile: null, imagePreview: null, uploadedUrl: null, uploading: false };
+  return { id: generateSafeId(), description: "", amount: "", peopleCount: 1, imageFile: null, imagePreview: null, uploadedUrl: null, uploading: false };
 }
 
 export default function ExpenseForm({
@@ -81,13 +82,26 @@ export default function ExpenseForm({
   };
 
   const getCategoryLimitStatus = (category: string) => {
-    const limit = categoryLimits[category];
-    if (!limit || limit === 0) return null; // No limit set
+    const baseLimit = categoryLimits[category];
+    if (!baseLimit || baseLimit === 0) return null;
     const { total } = getCategoryUsage(category);
-    const remaining = limit - total;
+    
+    let effectiveLimit = baseLimit;
+    if (category === "meal") {
+      const existingPeople = todayExpenses
+        .filter(e => e.category === "meal")
+        .reduce((s, e) => s + (Number((e as any).number_of_people) || 1), 0);
+      const currentPeople = cards
+        .filter(c => c.category === "meal")
+        .reduce((s, c) => s + c.subRows.reduce((ss, r) => ss + (r.peopleCount || 1), 0), 0);
+      const totalPeople = existingPeople + currentPeople;
+      if (totalPeople > 0) effectiveLimit = baseLimit * totalPeople;
+    }
+    
+    const remaining = effectiveLimit - total;
     const exceeded = remaining < 0;
-    const pct = Math.min((total / limit) * 100, 100);
-    return { limit, total, remaining, exceeded, pct };
+    const pct = Math.min((total / effectiveLimit) * 100, 100);
+    return { limit: effectiveLimit, total, remaining, exceeded, pct };
   };
 
   const addCard = () => {
@@ -267,6 +281,7 @@ const uploadImage = async (cardId: string, subId: string) => {
         category: card.category,
         description: row.description,
         amount: amountValue,
+        number_of_people: card.category === "meal" ? (row.peopleCount || 1) : 1,
         image_url: row.uploadedUrl || null,
         status: "pending",
       });
@@ -422,6 +437,27 @@ const uploadImage = async (cardId: string, subId: string) => {
           />
         </div>
       </div>
+
+      {/* People Count for Meal */}
+      {card.category === "meal" && (
+        <div className="flex items-center gap-2 mt-2 bg-amber-50/80 p-2 rounded-lg border border-amber-200/50">
+          <Users className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+          <span className="text-[9px] font-black text-amber-700 uppercase tracking-wider">People</span>
+          <div className="flex items-center gap-1 ml-auto">
+            <button
+              type="button"
+              onClick={() => updateSubRow(card.id, row.id, "peopleCount", Math.max(1, (row.peopleCount || 1) - 1))}
+              className="w-6 h-6 rounded-md bg-white border border-amber-200 text-amber-700 font-black text-sm flex items-center justify-center active:scale-90"
+            >−</button>
+            <span className="w-6 text-center text-[11px] font-black text-amber-800">{row.peopleCount || 1}</span>
+            <button
+              type="button"
+              onClick={() => updateSubRow(card.id, row.id, "peopleCount", Math.min(10, (row.peopleCount || 1) + 1))}
+              className="w-6 h-6 rounded-md bg-white border border-amber-200 text-amber-700 font-black text-sm flex items-center justify-center active:scale-90"
+            >+</button>
+          </div>
+        </div>
+      )}
 
       {/* Image Actions (Auto-Upload Version) */}
       <div className="flex items-center justify-between px-1 mt-3">

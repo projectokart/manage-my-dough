@@ -196,6 +196,21 @@ const loadData = async () => {
   // --- Logic Functions ---
   
 
+// Notification Helper
+const createNotification = async (targetUserId: string, type: string, title: string, message: string, relatedId?: string) => {
+  try {
+    await supabase.from("notifications" as any).insert({
+      user_id: targetUserId,
+      type,
+      title,
+      message,
+      related_id: relatedId || null,
+    });
+  } catch (err) {
+    console.error("Notification insert error:", err);
+  }
+};
+
 // 1. Master Logic: Approve (with Edit & Note) - with input validation
 const approveExpense = async (expenseId: string) => {
   const expense = expenses.find(e => e.id === expenseId);
@@ -227,6 +242,13 @@ const approveExpense = async (expenseId: string) => {
 
     if (error) throw error;
     toast.success("Expense Approved!");
+    await createNotification(
+      expense.user_id,
+      "expense_approved",
+      "Expense Approved",
+      `₹${parsedAmount} (${expense.category}) approved.${adminNote ? ' Note: ' + adminNote : ''}`,
+      expenseId
+    );
     loadData();
   } catch (err: any) {
     toast.error(err.message);
@@ -257,6 +279,16 @@ const rejectExpense = async (expenseId: string) => {
 
     if (error) throw error;
     toast.success("Expense rejected");
+    const expense = expenses.find(e => e.id === expenseId);
+    if (expense) {
+      await createNotification(
+        expense.user_id,
+        "expense_rejected",
+        "Expense Rejected",
+        `₹${expense.amount} (${expense.category}) rejected. Reason: ${reason.trim()}`,
+        expenseId
+      );
+    }
     loadData();
   } catch (err: any) {
     toast.error(err.message);
@@ -282,12 +314,23 @@ const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 const deleteExpense = async (id: string) => {
   setIsActionLoading(id);
   try {
+    const expenseToDelete = expenses.find(e => e.id === id);
     const { error } = await supabase
       .from("expenses")
       .delete()
       .eq("id", id);
 
     if (error) throw error;
+    
+    if (expenseToDelete) {
+      await createNotification(
+        expenseToDelete.user_id,
+        "expense_deleted",
+        "Expense Deleted",
+        `₹${expenseToDelete.amount} (${expenseToDelete.category}) entry was deleted by admin.`,
+        id
+      );
+    }
     
     // Remove from local state instantly
     setExpenses(prev => prev.filter(e => e.id !== id));
@@ -330,6 +373,15 @@ const deleteExpense = async (id: string) => {
   
 
     toast.success("Account Settled Successfully!");
+    
+    if (selectedUser) {
+      await createNotification(
+        selectedUser,
+        "settlement",
+        "Payment Received",
+        `₹${settleData.amount} has been settled to your account.${settleData.note ? ' Note: ' + settleData.note : ''}`,
+      );
+    }
     
     // ✅ Form Reset with clean state
     setSettleData({ ...settleData, amount: 0, proofUrl: "", note: "" });
