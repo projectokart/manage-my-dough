@@ -196,6 +196,21 @@ const loadData = async () => {
   // --- Logic Functions ---
   
 
+// Notification Helper
+const createNotification = async (targetUserId: string, type: string, title: string, message: string, relatedId?: string) => {
+  try {
+    await supabase.from("notifications" as any).insert({
+      user_id: targetUserId,
+      type,
+      title,
+      message,
+      related_id: relatedId || null,
+    });
+  } catch (err) {
+    console.error("Notification insert error:", err);
+  }
+};
+
 // 1. Master Logic: Approve (with Edit & Note) - with input validation
 const approveExpense = async (expenseId: string) => {
   const expense = expenses.find(e => e.id === expenseId);
