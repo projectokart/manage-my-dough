@@ -30,7 +30,7 @@ export default function UserDashboard() {
 
     const fetchAll = async () => {
       try {
-        const [missionRes, expenseRes, settlementRes, limitsRes] = await Promise.all([
+        const [missionRes, expenseRes, settlementRes, limitsRes, notifRes] = await Promise.all([
           supabase.from("missions").select("*").eq("user_id", user.id)
             .in("status", ["active", "pending"]).order("created_at", { ascending: false }).limit(1),
           supabase.from("expenses").select("*").eq("user_id", user.id)
@@ -38,6 +38,7 @@ export default function UserDashboard() {
           supabase.from("settlements" as any).select(`*, admin:profiles!settlements_settled_by_fkey (name)`)
             .eq("user_id", user.id).order("created_at", { ascending: false }),
           supabase.from("category_limits").select("category, daily_limit"),
+          supabase.from("notifications" as any).select("id", { count: "exact" }).eq("user_id", user.id).eq("is_read", false),
         ]);
 
         setActiveMission(missionRes.data?.[0] ?? null);
