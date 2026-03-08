@@ -292,8 +292,8 @@ const uploadImage = async (cardId: string, subId: string) => {
   }
 
   if (exceededCategories.length > 0) {
-    toast.error(`Limit cross ho gayi hai: ${exceededCategories.join(", ")}`);
-    return;
+    toast.warning(`Limit exceeded for: ${exceededCategories.join(", ")}. Admin may adjust the amount.`);
+    // Don't block - allow submission with warning
   }
 
   // 5. Database Insert
