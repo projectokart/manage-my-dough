@@ -214,6 +214,19 @@ export default function AdminJournalLogbook() {
       }).eq("id", editingMissionId);
 
       if (error) throw error;
+      
+      // Send notification to mission owner
+      const mission = missions.find(m => m.id === editingMissionId);
+      if (mission) {
+        await createNotification(
+          mission.user_id,
+          "general",
+          "Mission Updated",
+          `Your mission "${editForm.name.trim()}" details were updated by admin.`,
+          editingMissionId
+        );
+      }
+      
       toast.success("Mission updated successfully!");
       setEditingMissionId(null);
       fetchData();
