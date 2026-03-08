@@ -224,9 +224,25 @@ export default function AdminJournalLogbook() {
     }
   };
 
+  // Notification helper
+  const createNotification = async (targetUserId: string, type: string, title: string, message: string, relatedId?: string) => {
+    try {
+      await supabase.from("notifications" as any).insert({
+        user_id: targetUserId,
+        type,
+        title,
+        message,
+        related_id: relatedId || null,
+      });
+    } catch (err) {
+      console.error("Notification insert error:", err);
+    }
+  };
+
   // --- Delete Mission ---
   const confirmDeleteMission = async () => {
     if (!deleteMissionId) return;
+    const missionToDelete = missions.find(m => m.id === deleteMissionId);
     setDeletingMission(true);
     try {
       // Delete related expenses first
@@ -238,6 +254,17 @@ export default function AdminJournalLogbook() {
       // Delete mission
       const { error } = await supabase.from("missions").delete().eq("id", deleteMissionId);
       if (error) throw error;
+
+      // Send notification to user
+      if (missionToDelete) {
+        await createNotification(
+          missionToDelete.user_id,
+          "mission_deleted",
+          "Mission Deleted",
+          `Your mission "${missionToDelete.name}" and all related data has been deleted by admin.`,
+          deleteMissionId
+        );
+      }
 
       setMissions(prev => prev.filter(m => m.id !== deleteMissionId));
       toast.success("Mission deleted successfully!");
