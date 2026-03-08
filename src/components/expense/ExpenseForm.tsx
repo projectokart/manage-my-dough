@@ -377,7 +377,7 @@ const uploadImage = async (cardId: string, subId: string) => {
                     />
                   </div>
                   {status.exceeded && (
-                    <p className="mt-1 text-[8px] italic">Reduce amount to submit. Current overage: ₹{Math.abs(status.remaining).toLocaleString()}</p>
+                    <p className="mt-1 text-[8px] italic">⚠ You exceeded the limit by ₹{Math.abs(status.remaining).toLocaleString()}. Admin may cut the extra amount.</p>
                   )}
                 </div>
               );
