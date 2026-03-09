@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import * as XLSX from 'xlsx';
 import ImagePreviewModal from "@/components/expense/ImagePreviewModal";
 import AdminJournalLogbook from "@/components/admin/AdminJournalLogbook";
+import AdminFundTab from "@/components/admin/AdminFundTab";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,7 +62,7 @@ RefreshCw
 } from 'lucide-react';
 
 // 1. Added "settlements" to Tab type
-type Tab = "expenses" | "users" | "limits" | "reports" | "settlements" | "journal";
+type Tab = "expenses" | "users" | "limits" | "reports" | "settlements" | "journal" | "fund";
 
 
 
@@ -606,6 +607,7 @@ const exportCSV = () => {
     { key: "journal", label: "Journal", icon: <Activity className="w-4 h-4" /> },
     { key: "limits", label: "Limits", icon: <Settings className="w-4 h-4" /> },
     { key: "reports", label: "Reports", icon: <BarChart3 className="w-4 h-4" /> },
+    { key: "fund", label: "Fund", icon: <Wallet className="w-4 h-4" /> },
   ];
 //6
 const uploadSettlementProof = async (file: File) => {
@@ -1837,6 +1839,8 @@ const uniqueMissionsReport = useMemo(() => {
 )}
         {/* Journal Tab */}
         {tab === "journal" && <AdminJournalLogbook />}
+        {/* Fund Tab */}
+        {tab === "fund" && <AdminFundTab settlements={settlements} users={users} onRefresh={loadData} />}
       </div>
 
       {/* Delete Confirmation Dialog */}
