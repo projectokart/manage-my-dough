@@ -607,6 +607,7 @@ const exportCSV = () => {
     { key: "journal", label: "Journal", icon: <Activity className="w-4 h-4" /> },
     { key: "limits", label: "Limits", icon: <Settings className="w-4 h-4" /> },
     { key: "reports", label: "Reports", icon: <BarChart3 className="w-4 h-4" /> },
+    { key: "fund", label: "Fund", icon: <Wallet className="w-4 h-4" /> },
   ];
 //6
 const uploadSettlementProof = async (file: File) => {
