@@ -246,10 +246,14 @@ export default function JourneyLogbook({ userId, refreshKey }: Props) {
         onClick={() => setExpandedEntry(isDetailOpen ? null : entry.id)}
         className="w-full py-3 flex justify-between items-center hover:bg-white/40 text-left px-1"
       >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${CATEGORY_DOT_COLORS[entry.category] || "bg-muted-foreground"}`} />
-          <span className="text-[10px] font-bold text-foreground truncate uppercase">{entry.description || "No Detail"}</span>
-        </div>
+        <div className="flex items-start gap-2 flex-1 min-w-0"> 
+  {/* items-center ko items-start kiya taaki dot top line ke saath rahe */}
+  <div className={`w-1.5 h-1.5 mt-1 rounded-full flex-shrink-0 ${CATEGORY_DOT_COLORS[entry.category] || "bg-muted-foreground"}`} />
+  
+  <span className="text-[10px] font-bold text-foreground uppercase whitespace-normal break-words leading-tight">
+    {entry.description || "No Detail"}
+  </span>
+</div>
         <div className="flex items-center gap-2 ml-2">
           <span className={`text-[10px] font-black ${entry.category === "cash" ? "text-success" : "text-foreground/80"}`}>
             ₹{Number(entry.amount).toLocaleString()}
