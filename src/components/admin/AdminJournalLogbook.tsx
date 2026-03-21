@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
   ChevronDown, ChevronRight, User, Target, Calendar,
   MapPin, Users as UsersIcon, FileText, Camera, Eye,
-  Pencil, Trash2, Save, X, Loader2
+  Pencil, Trash2, Save, X, Loader2, CheckCircle, XCircle, RefreshCw
 } from "lucide-react";
 import ImagePreviewModal from "@/components/expense/ImagePreviewModal";
 import MissionGallery from "@/components/expense/MissionGallery";
@@ -74,7 +74,8 @@ export default function AdminJournalLogbook() {
   const [filterUser, setFilterUser] = useState("all");
   const [filterMission, setFilterMission] = useState("all");
   const [filterDate, setFilterDate] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all"); // "all" | "active" | "completed"
+  // filterStatus removed — active/completed ab tabs mein dikhenge
+  const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
 
   // Expand states
   const [expandedMissions, setExpandedMissions] = useState<Set<string>>(new Set());
@@ -90,6 +91,12 @@ export default function AdminJournalLogbook() {
   // Delete states
   const [deleteMissionId, setDeleteMissionId] = useState<string | null>(null);
   const [deletingMission, setDeletingMission] = useState(false);
+
+  // Expense action states
+  const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchData();
@@ -124,26 +131,22 @@ export default function AdminJournalLogbook() {
     return missions.filter(m => m.user_id === filterUser);
   }, [missions, filterUser]);
 
-  // Show ALL missions by default (active + completed)
+  // Base filtered missions (user + mission filter only)
   const filteredMissions = useMemo(() => {
     let result = missions;
-
-    if (filterUser !== "all") {
-      result = result.filter(m => m.user_id === filterUser);
-    }
-    if (filterMission !== "all") {
-      result = result.filter(m => m.id === filterMission);
-    }
-    if (filterStatus !== "all") {
-      if (filterStatus === "active") {
-        result = result.filter(m => m.status === "active" || m.status === "pending");
-      } else {
-        result = result.filter(m => m.status === "completed");
-      }
-    }
-
+    if (filterUser !== "all") result = result.filter(m => m.user_id === filterUser);
+    if (filterMission !== "all") result = result.filter(m => m.id === filterMission);
     return result;
-  }, [missions, filterUser, filterMission, filterStatus]);
+  }, [missions, filterUser, filterMission]);
+
+  // Active aur Completed alag
+  const activeMissions = useMemo(() =>
+    filteredMissions.filter(m => m.status === "active" || m.status === "pending"),
+  [filteredMissions]);
+
+  const completedMissions = useMemo(() =>
+    filteredMissions.filter(m => m.status === "completed"),
+  [filteredMissions]);
 
   const getExpensesForMission = (missionId: string) => {
     let exps = expenses.filter(e => e.mission_id === missionId);
@@ -289,6 +292,79 @@ export default function AdminJournalLogbook() {
     }
   };
 
+  // --- Expense Actions ---
+  const approveExpense = async (expense: Expense) => {
+    const newAmt = prompt(`Current: ₹${expense.amount}. Edit amount?`, expense.amount.toString());
+    if (newAmt === null) return;
+    const parsed = parseFloat(newAmt);
+    if (isNaN(parsed) || parsed < 0) { toast.error("Invalid amount"); return; }
+    const note = prompt("Add note for user:", "Approved by admin.");
+    setActionLoadingId(expense.id);
+    try {
+      const { error } = await supabase.from("expenses").update({
+        status: "approved", amount: parsed,
+        admin_note: note?.trim() || null,
+        approved_by: user?.id,
+        approved_at: new Date().toISOString(),
+      }).eq("id", expense.id);
+      if (error) throw error;
+      await createNotification(
+        missions.find(m => m.id === expense.mission_id)?.user_id || "",
+        "expense_approved", "Expense Approved",
+        `₹${parsed} (${expense.category}) approved.${note ? " Note: " + note : ""}`,
+        expense.id
+      );
+      toast.success("Approved!");
+      setExpenses(prev => prev.map(e => e.id === expense.id ? { ...e, status: "approved", amount: parsed } : e));
+    } catch (err: any) { toast.error(err.message); }
+    finally { setActionLoadingId(null); }
+  };
+
+  const rejectExpense = async (expense: Expense) => {
+    const reason = prompt("Rejection reason:");
+    if (reason === null) return;
+    if (!reason.trim()) { toast.error("Please enter a reason."); return; }
+    setActionLoadingId(expense.id);
+    try {
+      const { error } = await supabase.from("expenses").update({
+        status: "rejected", admin_note: reason.trim(),
+        approved_by: user?.id,
+        approved_at: new Date().toISOString(),
+      }).eq("id", expense.id);
+      if (error) throw error;
+      await createNotification(
+        missions.find(m => m.id === expense.mission_id)?.user_id || "",
+        "expense_rejected", "Expense Rejected",
+        `₹${expense.amount} (${expense.category}) rejected. Reason: ${reason.trim()}`,
+        expense.id
+      );
+      toast.success("Rejected!");
+      setExpenses(prev => prev.map(e => e.id === expense.id ? { ...e, status: "rejected" } : e));
+    } catch (err: any) { toast.error(err.message); }
+    finally { setActionLoadingId(null); }
+  };
+
+  const confirmDeleteExpense = async () => {
+    if (!deleteExpenseId) return;
+    setDeletingExpense(true);
+    try {
+      const exp = expenses.find(e => e.id === deleteExpenseId);
+      const { error } = await supabase.from("expenses").delete().eq("id", deleteExpenseId);
+      if (error) throw error;
+      if (exp) {
+        await createNotification(
+          missions.find(m => m.id === exp.mission_id)?.user_id || "",
+          "expense_deleted", "Expense Deleted",
+          `₹${exp.amount} (${exp.category}) was deleted by admin.`,
+          deleteExpenseId
+        );
+      }
+      setExpenses(prev => prev.filter(e => e.id !== deleteExpenseId));
+      toast.success("Expense deleted!");
+    } catch (err: any) { toast.error("Unable to delete expense."); }
+    finally { setDeletingExpense(false); setDeleteExpenseId(null); }
+  };
+
   if (role !== "admin") {
     return <div className="text-center py-10 text-[10px] font-black text-destructive uppercase">Access Denied</div>;
   }
@@ -299,20 +375,25 @@ export default function AdminJournalLogbook() {
 
   const renderExpenseEntry = (entry: Expense) => {
     const isOpen = expandedEntry === entry.id;
+    const isLoading = actionLoadingId === entry.id;
+
     return (
       <div key={entry.id} className="border-t border-gray-50 first:border-t-0">
+        {/* Header row — click to expand */}
         <button
           onClick={() => setExpandedEntry(isOpen ? null : entry.id)}
           className="w-full py-3 flex justify-between items-center hover:bg-gray-50 text-left px-1"
         >
-          <div className="flex items-start gap-2 flex-1 min-w-0"> {/* items-center ko items-start kar diya */}
-  <div className={`w-1.5 h-1.5 mt-1 rounded-full flex-shrink-0 ${CATEGORY_DOT_COLORS[entry.category] || "bg-slate-400"}`} />
-  
-  <span className="text-[10px] font-bold text-gray-800 uppercase whitespace-normal break-words">
-    {entry.description || "No Detail"}
-  </span>
-</div>
-          <div className="flex items-center gap-2 ml-2">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <div className={`w-1.5 h-1.5 mt-1 rounded-full flex-shrink-0 ${CATEGORY_DOT_COLORS[entry.category] || "bg-slate-400"}`} />
+            <span className="text-[10px] font-bold text-gray-800 uppercase whitespace-normal break-words">
+              {entry.description || "No Detail"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+            <span className={`text-[7px] px-1.5 py-0.5 rounded-full font-black uppercase ${STATUS_BADGES[entry.status] || "bg-gray-100 text-gray-500"}`}>
+              {entry.status}
+            </span>
             <span className={`text-[10px] font-black ${entry.category === "cash" ? "text-emerald-600" : "text-gray-700"}`}>
               ₹{Number(entry.amount).toLocaleString()}
             </span>
@@ -320,8 +401,10 @@ export default function AdminJournalLogbook() {
           </div>
         </button>
 
+        {/* Expanded detail + actions */}
         {isOpen && (
-          <div className="pb-3 px-1">
+          <div className="pb-3 px-1 space-y-2">
+            {/* Image + info */}
             <div className="bg-white p-2.5 rounded-xl border border-gray-100 flex gap-3 shadow-sm">
               <div className="relative flex-shrink-0">
                 {entry.image_url ? (
@@ -352,6 +435,49 @@ export default function AdminJournalLogbook() {
                   {entry.status === "approved" || entry.status === "settled" ? "Verification Complete" : "Pending Review"}
                 </p>
               </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-1.5">
+              {entry.status === "pending" ? (
+                <>
+                  <button
+                    onClick={() => approveExpense(entry)}
+                    disabled={isLoading}
+                    className="flex-[2] flex items-center justify-center gap-1 py-2 bg-emerald-500 text-white rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => rejectExpense(entry)}
+                    disabled={isLoading}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 bg-rose-50 text-rose-500 rounded-xl text-[8px] font-black uppercase border border-rose-100 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    <XCircle className="w-3 h-3" /> Reject
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => entry.status === "approved" ? rejectExpense(entry) : approveExpense(entry)}
+                  disabled={isLoading}
+                  className={`flex-[3] flex items-center justify-center gap-1 py-2 rounded-xl text-[8px] font-black uppercase transition-all active:scale-95 disabled:opacity-50 ${
+                    entry.status === "approved"
+                      ? "bg-amber-50 text-amber-600 border border-amber-100"
+                      : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                  }`}
+                >
+                  {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  {entry.status === "approved" ? "Revert to Reject" : "Mark Approved"}
+                </button>
+              )}
+              <button
+                onClick={() => setDeleteExpenseId(entry.id)}
+                disabled={isLoading}
+                className="w-9 h-9 bg-slate-50 text-slate-400 hover:text-rose-500 rounded-xl flex items-center justify-center border border-transparent hover:border-rose-100 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         )}
@@ -589,23 +715,6 @@ export default function AdminJournalLogbook() {
             </div>
           </div>
 
-          {/* Status Filter */}
-          <div className="group space-y-1">
-            <label className="text-[7px] font-black uppercase text-gray-400 ml-1">Status</label>
-            <div className="relative">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full bg-gray-50/50 border border-transparent p-2 rounded-xl text-[9px] font-black uppercase outline-none appearance-none focus:bg-white focus:ring-2 focus:ring-emerald-500/10"
-              >
-                <option value="all">All (Active + Old)</option>
-                <option value="active">Active Only</option>
-                <option value="completed">Completed Only</option>
-              </select>
-              <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-gray-300 pointer-events-none" />
-            </div>
-          </div>
-
           {/* Date Filter */}
           <div className="group space-y-1">
             <label className="text-[7px] font-black uppercase text-gray-400 ml-1">Date</label>
@@ -621,12 +730,14 @@ export default function AdminJournalLogbook() {
         </div>
       </div>
 
-      {/* Results */}
+      {/* Results bar */}
       <div className="flex justify-between items-center px-2">
-        <span className="text-[8px] font-black uppercase opacity-30 tracking-[0.2em]">{filteredMissions.length} Missions</span>
-        {(filterUser !== "all" || filterMission !== "all" || filterDate || filterStatus !== "all") && (
+        <span className="text-[8px] font-black uppercase opacity-30 tracking-[0.2em]">
+          {activeMissions.length} Active · {completedMissions.length} Completed
+        </span>
+        {(filterUser !== "all" || filterMission !== "all" || filterDate) && (
           <button
-            onClick={() => { setFilterUser("all"); setFilterMission("all"); setFilterDate(""); setFilterStatus("all"); }}
+            onClick={() => { setFilterUser("all"); setFilterMission("all"); setFilterDate(""); }}
             className="text-[8px] font-black text-blue-500 uppercase underline active:opacity-50"
           >
             Clear Filters
@@ -634,18 +745,83 @@ export default function AdminJournalLogbook() {
         )}
       </div>
 
-      {/* Mission Cards */}
-      {filteredMissions.length === 0 ? (
-        <div className="text-center py-10 opacity-20 font-black text-[10px] uppercase italic tracking-widest">
-          No Missions Found
+      {/* TAB BUTTONS */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setActiveTab("active")}
+          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center gap-2 ${
+            activeTab === "active"
+              ? "bg-emerald-500 text-white shadow-lg shadow-emerald-100"
+              : "bg-gray-100 text-gray-400"
+          }`}
+        >
+          {activeTab === "active" && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+          Active ({activeMissions.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("completed")}
+          className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+            activeTab === "completed"
+              ? "bg-gray-800 text-white shadow-lg"
+              : "bg-gray-100 text-gray-400"
+          }`}
+        >
+          Old Missions ({completedMissions.length})
+        </button>
+      </div>
+
+      {/* ACTIVE TAB */}
+      {activeTab === "active" && (
+        <div className="space-y-3 animate-in fade-in duration-200">
+          {activeMissions.length === 0 ? (
+            <div className="text-center py-10 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
+              <p className="text-gray-400 text-[10px] italic font-black uppercase tracking-widest">No Active Missions</p>
+            </div>
+          ) : (
+            activeMissions.map(m => renderMissionCard(m))
+          )}
         </div>
-      ) : (
-        filteredMissions.map(m => renderMissionCard(m))
+      )}
+
+      {/* COMPLETED TAB */}
+      {activeTab === "completed" && (
+        <div className="space-y-3 animate-in fade-in duration-200">
+          {completedMissions.length === 0 ? (
+            <div className="text-center py-10 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
+              <p className="text-gray-400 text-[10px] italic font-black uppercase tracking-widest">No Completed Missions</p>
+            </div>
+          ) : (
+            completedMissions.map(m => renderMissionCard(m))
+          )}
+        </div>
       )}
 
       <ImagePreviewModal imageUrl={previewImage} onClose={() => setPreviewImage(null)} />
 
-      {/* Delete Confirmation Dialog */}
+      {/* Expense Delete Confirmation */}
+      <AlertDialog open={!!deleteExpenseId} onOpenChange={(open) => !open && setDeleteExpenseId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Expense?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This expense record will be permanently deleted. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingExpense}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteExpense}
+              disabled={deletingExpense}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingExpense ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Mission Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteMissionId} onOpenChange={(open) => !open && setDeleteMissionId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
